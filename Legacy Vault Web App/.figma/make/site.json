@@ -1,0 +1,10 @@
+{
+  "description": "Securely manage and share digital accounts with trusted nominees using AI-powered verification and encrypted access to protect your digital legacy.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
