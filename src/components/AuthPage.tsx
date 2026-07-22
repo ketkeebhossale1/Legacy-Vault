@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
 import { Lock, Eye, EyeOff, Shield } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
 import AnimatedTabs from './ui/AnimatedTabs'
 import Button from './ui/Button'
+import type { AppDispatch, RootState } from '../redux/store'
+import { signInRequest, signUpRequest } from '../redux/actions/authActions'
+import { clearAuthError } from '../redux/reducers/authReducer'
 
 type Mode = 'signin' | 'signup'
 
@@ -15,8 +17,8 @@ interface AuthPageProps {
 export default function AuthPage({ mode: modeProp }: AuthPageProps) {
   const location = useLocation()
   const navigate = useNavigate()
-  const { login } = useAuth()
-  const { toast } = useToast()
+  const dispatch = useDispatch<AppDispatch>()
+  const { loading, error } = useSelector((state: RootState) => state.auth)
 
   const routeMode: Mode = modeProp ?? (location.pathname.includes('signup') ? 'signup' : 'signin')
   const [tab, setTab] = useState<Mode>(routeMode)
@@ -28,25 +30,28 @@ export default function AuthPage({ mode: modeProp }: AuthPageProps) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   const switchTab = (id: string) => {
     const next = id as Mode
     setTab(next)
+    dispatch(clearAuthError())
     navigate(next === 'signup' ? '/signup' : '/login', { replace: true })
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    login({ name: name || 'Demo User', email: email || 'demo@legacyvault.app' })
-    toast(tab === 'signin' ? 'Welcome back to Legacy Vault' : 'Your vault is ready', 'success')
-    const from = (location.state as { from?: string } | null)?.from
-    navigate(from && from !== '/login' && from !== '/signup' ? from : '/home', { replace: true })
-  }
+    const nextErrors: Record<string, string> = {}
+    if (tab === 'signup' && !name.trim()) nextErrors.name = 'Enter your full name'
+    if (!email.trim()) nextErrors.email = 'Enter your email address'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) nextErrors.email = 'Enter a valid email address'
+    if (!password) nextErrors.password = 'Enter your password'
+    else if (password.length < 8) nextErrors.password = 'Use at least 8 characters'
+    setErrors(nextErrors)
+    if (Object.keys(nextErrors).length) return
 
-  const guestLogin = () => {
-    login({ name: 'Demo User', email: 'demo@legacyvault.app' })
-    toast('Continuing as guest', 'info')
-    navigate('/home', { replace: true })
+    if (tab === 'signup') dispatch(signUpRequest({ name, email, password }))
+    else dispatch(signInRequest({ email, password, role: 'testator' }))
   }
 
   return (
@@ -128,11 +133,12 @@ export default function AuthPage({ mode: modeProp }: AuthPageProps) {
                   <input
                     type="text"
                     value={name}
-                    onChange={e => setName(e.target.value)}
+                    onChange={e => { setName(e.target.value); setErrors(current => ({ ...current, name: '' })) }}
                     placeholder="Alex Sharma"
                     className="input-field w-full px-4 py-3 rounded-xl text-sm border"
                     style={{ borderColor: '#e8ebf0', background: '#fafbfc' }}
                   />
+                  {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
                 </div>
               )}
               <div>
@@ -140,11 +146,12 @@ export default function AuthPage({ mode: modeProp }: AuthPageProps) {
                 <input
                   type="email"
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
+                  onChange={e => { setEmail(e.target.value); setErrors(current => ({ ...current, email: '' })) }}
                   placeholder="you@example.com"
                   className="input-field w-full px-4 py-3 rounded-xl text-sm border"
                   style={{ borderColor: '#e8ebf0', background: '#fafbfc' }}
                 />
+                {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
               </div>
               <div>
                 <label className="text-xs font-medium text-slate-600 mb-1.5 block">Password</label>
@@ -152,7 +159,7 @@ export default function AuthPage({ mode: modeProp }: AuthPageProps) {
                   <input
                     type={showPass ? 'text' : 'password'}
                     value={password}
-                    onChange={e => setPassword(e.target.value)}
+                    onChange={e => { setPassword(e.target.value); setErrors(current => ({ ...current, password: '' })) }}
                     placeholder="••••••••"
                     className="input-field w-full px-4 py-3 pr-12 rounded-xl text-sm border"
                     style={{ borderColor: '#e8ebf0', background: '#fafbfc' }}
@@ -165,6 +172,7 @@ export default function AuthPage({ mode: modeProp }: AuthPageProps) {
                     {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
+                {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
               </div>
 
               {tab === 'signin' && (
@@ -175,20 +183,11 @@ export default function AuthPage({ mode: modeProp }: AuthPageProps) {
                 </div>
               )}
 
-              <Button type="submit" className="w-full mt-1">
-                {tab === 'signin' ? 'Sign In' : 'Create Vault'}
+              {error && <p className="text-xs text-red-500 -mt-1">{error}</p>}
+              <Button type="submit" className="w-full mt-1" disabled={loading}>
+                {loading ? 'Please wait…' : tab === 'signin' ? 'Sign In' : 'Create Vault'}
               </Button>
             </form>
-
-            <div className="flex items-center gap-3 my-5">
-              <div className="flex-1 h-px" style={{ background: '#e8ebf0' }} />
-              <span className="text-xs text-slate-400">or</span>
-              <div className="flex-1 h-px" style={{ background: '#e8ebf0' }} />
-            </div>
-
-            <Button type="button" variant="secondary" className="w-full" onClick={guestLogin}>
-              Continue as Guest (Demo)
-            </Button>
 
             <p className="text-xs text-slate-400 text-center mt-5">
               By continuing, you agree to our{' '}

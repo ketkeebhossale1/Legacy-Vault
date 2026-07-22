@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom'
 import {
   Home, Users, FileText, Bell, Lock,
@@ -7,8 +8,9 @@ import {
 } from 'lucide-react'
 import AnimatedBlobs from '../components/AnimatedBlobs'
 import PageTransition from '../components/ui/PageTransition'
-import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import type { AppDispatch, RootState } from '../redux/store'
+import { signOut } from '../redux/reducers/authReducer'
 
 const navItems = [
   { to: '/home', label: 'Home', icon: Home },
@@ -22,13 +24,14 @@ const navItems = [
 export default function SidebarLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
-  const { user, logout } = useAuth()
+  const dispatch = useDispatch<AppDispatch>()
+  const user = useSelector((state: RootState) => state.auth.user)
   const { toast } = useToast()
   const navigate = useNavigate()
   const width = collapsed ? 80 : 248
 
   const handleLogout = () => {
-    logout()
+    dispatch(signOut())
     toast('Signed out successfully', 'info')
     navigate('/login')
   }

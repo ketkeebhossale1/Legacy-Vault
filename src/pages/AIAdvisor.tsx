@@ -36,7 +36,7 @@ export default function AIAdvisor() {
     setReply(null)
     setTimeout(() => {
       setReply(
-        `Based on your setup: review nominee allocations in My Legacy, then regenerate and save your Digital Will. For “${question.trim().slice(0, 80)}”, ensure asset percentages are clear and share the will with your advocate or executor when ready.`,
+        `Based on your setup: review nominee allocations in My Legacy, then regenerate and save your Digital Will. For "${question.trim().slice(0, 80)}", ensure asset percentages are clear and share the will with your advocate or executor when ready.`,
       )
       setLoading(false)
       toast('Advisor response ready', 'success')

@@ -1,40 +1,44 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Users, Eye, EyeOff } from 'lucide-react'
-import { mockNominees, NOMINEES_STORAGE_KEY, type Nominee } from '../data/mockData'
+import { Plus, Pencil, Trash2, Users } from 'lucide-react'
+import { useDispatch, useSelector } from 'react-redux'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import { useToast } from '../context/ToastContext'
+import type { AppDispatch, RootState } from '../redux/store'
+import {
+  fetchNomineesRequest,
+  createNomineeRequest,
+  updateNomineeRequest,
+  deleteNomineeRequest,
+} from '../redux/actions/nomineeActions'
+import type { Nominee } from '../data/mockData'
 
 const emptyForm = {
   firstName: '',
   lastName: '',
   email: '',
-  password: '',
   address: '',
   assetName: '',
   assetPercentage: '',
 }
 
-function loadNominees(): Nominee[] {
-  try {
-    const raw = localStorage.getItem(NOMINEES_STORAGE_KEY)
-    if (raw) return JSON.parse(raw) as Nominee[]
-  } catch { /* ignore */ }
-  return mockNominees
-}
-
 export default function MyLegacy() {
   const { toast } = useToast()
-  const [nominees, setNominees] = useState<Nominee[]>(loadNominees)
+  const dispatch = useDispatch<AppDispatch>()
+  const { items: nominees, loading, error } = useSelector((state: RootState) => state.nominees)
+
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
-  const [showPass, setShowPass] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    localStorage.setItem(NOMINEES_STORAGE_KEY, JSON.stringify(nominees))
-  }, [nominees])
+    dispatch(fetchNomineesRequest())
+  }, [dispatch])
+
+  useEffect(() => {
+    if (error) toast(error, 'error')
+  }, [error, toast])
 
   const validate = () => {
     const next: Record<string, string> = {}
@@ -42,8 +46,6 @@ export default function MyLegacy() {
     if (!form.lastName.trim()) next.lastName = 'Last name is required'
     if (!form.email.trim()) next.email = 'Email is required'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) next.email = 'Enter a valid email'
-    if (!form.password.trim()) next.password = 'Password is required'
-    else if (form.password.length < 6 && form.password !== '••••••••') next.password = 'Password must be at least 6 characters'
     if (!form.address.trim()) next.address = 'Residential address is required'
     if (!form.assetName.trim()) next.assetName = 'Asset name is required'
     const pct = Number(form.assetPercentage)
@@ -57,7 +59,6 @@ export default function MyLegacy() {
     setForm(emptyForm)
     setEditingId(null)
     setErrors({})
-    setShowPass(false)
     setShowForm(false)
   }
 
@@ -73,7 +74,6 @@ export default function MyLegacy() {
       firstName: n.firstName,
       lastName: n.lastName,
       email: n.email,
-      password: n.password,
       address: n.address,
       assetName: n.assetName,
       assetPercentage: String(n.assetPercentage),
@@ -88,29 +88,27 @@ export default function MyLegacy() {
       toast('Please fix the highlighted fields', 'error')
       return
     }
-    const payload: Nominee = {
-      id: editingId || `n-${Date.now()}`,
+    const nomineeInput = {
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
       email: form.email.trim(),
-      password: form.password,
       address: form.address.trim(),
       assetName: form.assetName.trim(),
       assetPercentage: Number(form.assetPercentage),
     }
 
     if (editingId) {
-      setNominees(prev => prev.map(n => (n.id === editingId ? payload : n)))
+      dispatch(updateNomineeRequest({ id: editingId, nominee: nomineeInput }))
       toast('Nominee updated successfully', 'success')
     } else {
-      setNominees(prev => [...prev, payload])
+      dispatch(createNomineeRequest(nomineeInput))
       toast('Nominee saved successfully', 'success')
     }
     resetForm()
   }
 
   const handleDelete = (id: string) => {
-    setNominees(prev => prev.filter(n => n.id !== id))
+    dispatch(deleteNomineeRequest(id))
     if (editingId === id) resetForm()
     toast('Nominee removed', 'info')
   }
@@ -122,33 +120,17 @@ export default function MyLegacy() {
   ) => (
     <div>
       <label className="text-xs font-medium text-slate-600 mb-1.5 block">{label}</label>
-      <div className="relative">
-        <input
-          type={opts?.type === 'password' ? (showPass ? 'text' : 'password') : opts?.type || 'text'}
-          value={form[key]}
-          onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-          placeholder={opts?.placeholder}
-          min={opts?.type === 'number' ? 0 : undefined}
-          max={opts?.type === 'number' ? 100 : undefined}
-          step={opts?.type === 'number' ? 1 : undefined}
-          className="input-field w-full px-4 py-2.5 rounded-xl text-sm border"
-          style={{
-            borderColor: errors[key] ? '#dc3545' : '#e8ebf0',
-            background: '#fafbfc',
-            paddingRight: opts?.type === 'password' ? 44 : undefined,
-          }}
-        />
-        {opts?.type === 'password' && (
-          <button
-            type="button"
-            onClick={() => setShowPass(s => !s)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-            aria-label="Toggle password"
-          >
-            {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
-          </button>
-        )}
-      </div>
+      <input
+        type={opts?.type || 'text'}
+        value={form[key]}
+        onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+        placeholder={opts?.placeholder}
+        min={opts?.type === 'number' ? 0 : undefined}
+        max={opts?.type === 'number' ? 100 : undefined}
+        step={opts?.type === 'number' ? 1 : undefined}
+        className="input-field w-full px-4 py-2.5 rounded-xl text-sm border"
+        style={{ borderColor: errors[key] ? '#dc3545' : '#e8ebf0', background: '#fafbfc' }}
+      />
       {errors[key] && <p className="text-xs text-red-500 mt-1">{errors[key]}</p>}
     </div>
   )
@@ -163,7 +145,7 @@ export default function MyLegacy() {
           <p className="text-slate-500 text-sm mt-1">Manage nominees and their asset allocation percentages.</p>
         </div>
         {!showForm && (
-          <Button onClick={startAdd}>
+          <Button onClick={startAdd} disabled={loading}>
             <Plus size={15} /> Add Nominee
           </Button>
         )}
@@ -178,7 +160,6 @@ export default function MyLegacy() {
             {field('firstName', 'First Name *', { placeholder: 'Priya' })}
             {field('lastName', 'Last Name *', { placeholder: 'Sharma' })}
             {field('email', 'Email Address *', { type: 'email', placeholder: 'priya@example.com' })}
-            {field('password', 'Password *', { type: 'password', placeholder: '••••••••' })}
             <div className="md:col-span-2">
               {field('address', 'Residential Address *', { placeholder: 'Street, city, state' })}
             </div>
@@ -187,16 +168,16 @@ export default function MyLegacy() {
           </div>
           <div className="flex flex-wrap gap-3 mt-6">
             {!editingId ? (
-              <Button onClick={handleSave}>Save</Button>
+              <Button onClick={handleSave} disabled={loading}>{loading ? 'Saving…' : 'Save'}</Button>
             ) : (
-              <Button onClick={handleSave}>Update</Button>
+              <Button onClick={handleSave} disabled={loading}>{loading ? 'Updating…' : 'Update'}</Button>
             )}
             <Button variant="secondary" onClick={resetForm}>Cancel</Button>
           </div>
         </Card>
       )}
 
-      {nominees.length === 0 ? (
+      {nominees.length === 0 && !loading ? (
         <Card hover={false} className="text-center py-14">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
@@ -206,7 +187,6 @@ export default function MyLegacy() {
           </div>
           <p className="text-sm font-medium text-slate-700 mb-1">No nominees yet</p>
           <p className="text-xs text-slate-400 mb-5">Add your first nominee to start allocating assets.</p>
-          <Button onClick={startAdd}>Add Nominee</Button>
         </Card>
       ) : (
         <div className="grid gap-4">

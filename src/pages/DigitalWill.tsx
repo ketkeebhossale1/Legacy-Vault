@@ -4,16 +4,23 @@ import { jsPDF } from 'jspdf'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import { useToast } from '../context/ToastContext'
-import { WILL_STORAGE_KEY, mockNominees, NOMINEES_STORAGE_KEY, type Nominee } from '../data/mockData'
-import { useAuth } from '../context/AuthContext'
+import { useSelector, useDispatch } from 'react-redux'
+import type { RootState, AppDispatch } from '../redux/store'
+import { fetchWillRequest, saveWillRequest } from '../redux/actions/willActions'
+import type { Nominee } from '../data/mockData'
 
-function loadNominees(): Nominee[] {
-  try {
-    const raw = localStorage.getItem(NOMINEES_STORAGE_KEY)
-    if (raw) return JSON.parse(raw) as Nominee[]
-  } catch { /* ignore */ }
-  return mockNominees
-}
+const nomineeEntryGuide = [
+  'BLANK ENTRY TEMPLATE',
+  'Name:',
+  'Email:',
+  'Address:',
+  'Asset:',
+  'Allocation:',
+  'Phone number:',
+].join('\n')
+
+const nomineeSectionHeader = 'NOMINEE & ASSET ALLOCATIONS\n─────────────────────────────────────────\n\n'
+const currentAllocationsHeader = 'YOUR NOMINEE ALLOCATIONS\n─────────────────────────────────────────\n\n'
 
 function buildDefaultWill(ownerName: string, nominees: Nominee[]) {
   const lines = [
@@ -28,7 +35,9 @@ function buildDefaultWill(ownerName: string, nominees: Nominee[]) {
     `I, ${ownerName}, hereby declare this document as my digital will concerning the allocation of my digital and financial assets managed through Legacy Vault.`,
     '',
     '─────────────────────────────────────────',
-    'NOMINEE & ASSET ALLOCATIONS',
+    ...`${nomineeSectionHeader}${nomineeEntryGuide}\n\n${currentAllocationsHeader}`.trimEnd().split('\n'),
+    '',
+    'YOUR NOMINEE ALLOCATIONS',
     '─────────────────────────────────────────',
     '',
   ]
@@ -36,12 +45,12 @@ function buildDefaultWill(ownerName: string, nominees: Nominee[]) {
   if (nominees.length === 0) {
     lines.push('No nominees have been configured yet. Please add nominees in My Legacy.')
   } else {
-    nominees.forEach((n, i) => {
-      lines.push(`${i + 1}. ${n.firstName} ${n.lastName}`)
-      lines.push(`   Email: ${n.email}`)
-      lines.push(`   Address: ${n.address}`)
-      lines.push(`   Asset: ${n.assetName}`)
-      lines.push(`   Allocation: ${n.assetPercentage}%`)
+    nominees.forEach(n => {
+      lines.push(`Name: ${n.firstName} ${n.lastName}`)
+      lines.push(`Email: ${n.email}`)
+      lines.push(`Address: ${n.address}`)
+      lines.push(`Asset: ${n.assetName}`)
+      lines.push(`Allocation: ${n.assetPercentage}%`)
       lines.push('')
     })
   }
@@ -66,9 +75,12 @@ function downloadBlob(filename: string, blob: Blob) {
 }
 
 export default function DigitalWill() {
-  const { user } = useAuth()
+  const dispatch = useDispatch<AppDispatch>()
+  const user = useSelector((state: RootState) => state.auth.user)
+  const { text: remoteText, saved: remoteSaved, sharedWith: remoteSharedWith } = useSelector((state: RootState) => state.will)
+  const nominees = useSelector((state: RootState) => state.nominees.items)
   const { toast } = useToast()
-  const ownerName = user?.name || 'Demo User'
+  const ownerName = user?.name || 'Vault Owner'
 
   const [willText, setWillText] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
@@ -76,31 +88,26 @@ export default function DigitalWill() {
   const [executorEmail, setExecutorEmail] = useState('')
   const [sharedWith, setSharedWith] = useState<string[]>([])
 
+  // Fetch will from backend on mount
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(WILL_STORAGE_KEY)
-      if (raw) {
-        const data = JSON.parse(raw) as { text: string; saved: boolean; sharedWith?: string[] }
-        setWillText(data.text)
-        setSaved(!!data.saved)
-        setSharedWith(data.sharedWith || [])
-      }
-    } catch { /* ignore */ }
-  }, [])
+    dispatch(fetchWillRequest())
+  }, [dispatch])
 
-  const persist = (text: string, isSaved: boolean, shared: string[]) => {
-    localStorage.setItem(
-      WILL_STORAGE_KEY,
-      JSON.stringify({ text, saved: isSaved, sharedWith: shared, updatedAt: new Date().toISOString() }),
-    )
-  }
+  // Sync Redux will state into local state once loaded
+  useEffect(() => {
+    if (remoteText !== null) {
+      setWillText(remoteText)
+      setSaved(remoteSaved)
+      setSharedWith(remoteSharedWith)
+    }
+  }, [remoteText, remoteSaved, remoteSharedWith])
 
   const generateWill = () => {
-    const text = buildDefaultWill(ownerName, loadNominees())
+    const text = buildDefaultWill(ownerName, nominees)
     setWillText(text)
     setSaved(false)
     setSharedWith([])
-    persist(text, false, [])
+    dispatch(saveWillRequest({ text, saved: false, sharedWith: [] }))
     toast('Digital will generated — you can edit it below', 'success')
   }
 
@@ -135,7 +142,7 @@ export default function DigitalWill() {
 
     const next = [...new Set([...sharedWith, ...emails])]
     setSharedWith(next)
-    if (willText) persist(willText, saved, next)
+    dispatch(saveWillRequest({ text: willText, saved, sharedWith: next }))
     setAdvocateEmail('')
     setExecutorEmail('')
     toast(`Will shared with ${emails.join(', ')}`, 'success')
@@ -147,7 +154,7 @@ export default function DigitalWill() {
       return
     }
     setSaved(true)
-    persist(willText, true, sharedWith)
+    dispatch(saveWillRequest({ text: willText, saved: true, sharedWith }))
     toast('Digital will saved successfully', 'success')
   }
 
