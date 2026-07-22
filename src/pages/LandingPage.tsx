@@ -2,10 +2,11 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, Lock, Shield, Star } from 'lucide-react'
 import AnimatedBlobs from '../components/AnimatedBlobs'
 import Button from '../components/ui/Button'
-import { useAuth } from '../context/AuthContext'
+import { useSelector } from 'react-redux'
+import type { RootState } from '../redux/store'
 
 export default function LandingPage() {
-  const { isAuthenticated } = useAuth()
+  const isAuthenticated = !!useSelector((state: RootState) => state.auth.user)
 
   return (
     <div className="min-h-screen relative overflow-hidden">

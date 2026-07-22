@@ -1,12 +1,12 @@
 export interface Nominee {
-  id: string
+  id: number | string
   firstName: string
   lastName: string
   email: string
-  password: string
   address: string
   assetName: string
   assetPercentage: number
+  isActive?: boolean
 }
 
 export const mockNominees: Nominee[] = [
@@ -15,7 +15,6 @@ export const mockNominees: Nominee[] = [
     firstName: 'Priya',
     lastName: 'Sharma',
     email: 'priya.s@gmail.com',
-    password: '••••••••',
     address: '12 Residency Road, Bengaluru',
     assetName: 'HDFC Bank Account',
     assetPercentage: 40,
@@ -25,7 +24,6 @@ export const mockNominees: Nominee[] = [
     firstName: 'Arjun',
     lastName: 'Sharma',
     email: 'arjun.sharma@outlook.com',
-    password: '••••••••',
     address: '12 Residency Road, Bengaluru',
     assetName: 'LIC Policy',
     assetPercentage: 35,
@@ -35,7 +33,6 @@ export const mockNominees: Nominee[] = [
     firstName: 'Kavya',
     lastName: 'Sharma',
     email: 'kavya1997@gmail.com',
-    password: '••••••••',
     address: '88 Indiranagar, Bengaluru',
     assetName: 'Google Drive Archive',
     assetPercentage: 25,
@@ -43,12 +40,12 @@ export const mockNominees: Nominee[] = [
 ]
 
 export const auditLog = [
-  { ts: '2026-07-18 09:14', event: 'Vault viewed', actor: 'Raj Sharma (owner)' },
-  { ts: '2026-07-18 09:12', event: 'Nominee updated: Priya Sharma', actor: 'Raj Sharma (owner)' },
-  { ts: '2026-07-15 14:30', event: 'Nominee added: Kavya Sharma', actor: 'Raj Sharma (owner)' },
-  { ts: '2026-07-10 11:05', event: 'Digital Will shared with advocate', actor: 'Raj Sharma (owner)' },
-  { ts: '2026-06-22 17:44', event: 'Digital Will saved', actor: 'Raj Sharma (owner)' },
-  { ts: '2026-05-30 08:19', event: 'Vault created', actor: 'Raj Sharma (owner)' },
+  { ts: '2026-07-18 09:14', event: 'Vault viewed', actor: 'Vault owner' },
+  { ts: '2026-07-18 09:12', event: 'Nominee updated: Priya Sharma', actor: 'Vault owner' },
+  { ts: '2026-07-15 14:30', event: 'Nominee added: Kavya Sharma', actor: 'Vault owner' },
+  { ts: '2026-07-10 11:05', event: 'Digital Will shared with advocate', actor: 'Vault owner' },
+  { ts: '2026-06-22 17:44', event: 'Digital Will saved', actor: 'Vault owner' },
+  { ts: '2026-05-30 08:19', event: 'Vault created', actor: 'Vault owner' },
 ]
 
 export const WILL_STORAGE_KEY = 'legacy-vault-digital-will'

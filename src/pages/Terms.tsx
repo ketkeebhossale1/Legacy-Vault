@@ -15,9 +15,9 @@ export default function Terms() {
           You may not attempt to circumvent encryption, verification, or cooling-window protections, or use the service to store
           unlawful content.
         </p>
-        <h2 className="text-lg font-semibold text-slate-800" style={{ fontFamily: "'Playfair Display', serif" }}>Demo accounts</h2>
+        <h2 className="text-lg font-semibold text-slate-800" style={{ fontFamily: "'Playfair Display', serif" }}>Account security</h2>
         <p>
-          Guest and demo sessions store data locally in your browser for demonstration purposes and may be cleared when you sign out.
+          Keep your account credentials private and sign out on shared devices. Your vault settings may be cleared when you sign out of this prototype.
         </p>
         <h2 className="text-lg font-semibold text-slate-800" style={{ fontFamily: "'Playfair Display', serif" }}>Liability</h2>
         <p>
