@@ -5,8 +5,9 @@ export interface NomineeInput {
   lastName: string
   email: string
   address: string
-  assetName: string
-  assetPercentage: number
+  assetName?: string
+  assetPercentage?: number
+  isExecutor?: boolean
 }
 
 export const fetchNomineesRequest = createAction('nominees/fetchRequest')

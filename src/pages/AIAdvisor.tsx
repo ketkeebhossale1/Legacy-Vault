@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Sparkles, MessageCircle, ArrowRight, Lightbulb } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Sparkles, MessageCircle, ArrowRight, Lightbulb, Lock, Crown } from 'lucide-react'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import { useToast } from '../context/ToastContext'
+import { usePlan } from '../hooks/usePlan'
 
 const tips = [
   {
@@ -29,6 +30,37 @@ export default function AIAdvisor() {
   const [reply, setReply] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
+  const navigate = useNavigate()
+  const { canUseAIAdvisor } = usePlan()
+
+  if (!canUseAIAdvisor) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-slate-800" style={{ fontFamily: "'Playfair Display', serif" }}>
+            AI Advisor
+          </h1>
+          <p className="text-slate-500 text-sm mt-1">Your intelligent estate planning assistant.</p>
+        </div>
+        <Card hover={false} className="text-center py-16">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
+            style={{ background: 'rgba(124,58,237,0.1)', color: '#7c3aed' }}>
+            <Lock size={28} />
+          </div>
+          <h2 className="text-lg font-semibold text-slate-800 mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+            Premium Feature
+          </h2>
+          <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6">
+            AI Advisor is available on the Premium plan. Upgrade to get personalised estate planning guidance.
+          </p>
+          <Button onClick={() => navigate('/subscription')}
+            style={{ background: 'linear-gradient(135deg,#7c3aed,#9f67fa)' }}>
+            <Crown size={14} /> Upgrade to Premium
+          </Button>
+        </Card>
+      </div>
+    )
+  }
 
   const ask = () => {
     if (!question.trim()) return

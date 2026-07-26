@@ -1,4 +1,4 @@
-import { call, put, select, takeLatest } from 'redux-saga/effects'
+import { call, put, select, takeLeading } from 'redux-saga/effects'
 import type { AxiosResponse } from 'axios'
 import api from '../../services/api'
 import { fetchAuditLogsRequest, type AuditEntry } from '../actions/auditActions'
@@ -15,4 +15,4 @@ function* fetchAuditLogs() {
     yield put(auditSucceeded(response.data.data))
   } catch (error) { yield put(auditFailed(error instanceof Error ? error.message : 'Unable to load activity')) }
 }
-export default function* auditSaga() { yield takeLatest(fetchAuditLogsRequest.type, fetchAuditLogs) }
+export default function* auditSaga() { yield takeLeading(fetchAuditLogsRequest.type, fetchAuditLogs) }

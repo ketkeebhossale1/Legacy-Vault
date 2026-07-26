@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom'
+import { loadSettings } from '../hooks/useSettings'
 import {
   Home, Users, FileText, Bell, Lock,
   LogOut, ChevronRight, Menu, X,
-  Settings, Sparkles,
+  Settings, Sparkles, Crown,
 } from 'lucide-react'
 import AnimatedBlobs from '../components/AnimatedBlobs'
 import PageTransition from '../components/ui/PageTransition'
@@ -18,12 +19,20 @@ const navItems = [
   { to: '/digital-will', label: 'Digital Will', icon: FileText },
   { to: '/ai-advisor', label: 'AI Advisor', icon: Sparkles },
   { to: '/activity', label: 'Activity Logs', icon: Bell },
+  { to: '/subscription', label: 'Subscription', icon: Crown },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
 export default function SidebarLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => loadSettings().compact)
+
+  // Sync with settings changes (e.g. toggled from Settings page)
+  useEffect(() => {
+    const handler = () => setCollapsed(loadSettings().compact)
+    window.addEventListener('lv-settings-change', handler)
+    return () => window.removeEventListener('lv-settings-change', handler)
+  }, [])
   const dispatch = useDispatch<AppDispatch>()
   const user = useSelector((state: RootState) => state.auth.user)
   const { toast } = useToast()

@@ -385,3 +385,126 @@ input:focus, textarea:focus, select:focus {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ── Dark mode ── */
+[data-theme="dark"] {
+  --lv-bg: #0d1117;
+  --lv-bg-gradient: linear-gradient(165deg, #0d1117 0%, #111827 35%, #0f172a 70%, #111827 100%);
+  --lv-card: rgba(22, 27, 42, 0.92);
+  --lv-card-solid: #161b2a;
+  --lv-glass: rgba(15, 20, 35, 0.85);
+  --lv-border: rgba(26, 143, 143, 0.18);
+  --lv-border-soft: rgba(255, 255, 255, 0.07);
+  --lv-shadow-sm: 0 1px 2px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3);
+  --lv-shadow: 0 4px 16px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3);
+  --lv-shadow-lg: 0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.4);
+  --lv-shadow-float: 0 20px 50px rgba(26,143,143,0.15), 0 8px 20px rgba(0,0,0,0.4);
+}
+
+[data-theme="dark"] body {
+  background: var(--lv-bg-gradient);
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] html {
+  background: var(--lv-bg);
+}
+
+/* Tailwind text colour overrides */
+[data-theme="dark"] .text-slate-900 { color: #f1f5f9 !important; }
+[data-theme="dark"] .text-slate-800 { color: #e2e8f0 !important; }
+[data-theme="dark"] .text-slate-700 { color: #cbd5e1 !important; }
+[data-theme="dark"] .text-slate-600 { color: #94a3b8 !important; }
+[data-theme="dark"] .text-slate-500 { color: #64748b !important; }
+[data-theme="dark"] .text-slate-400 { color: #475569 !important; }
+
+/* Tailwind bg overrides */
+[data-theme="dark"] .bg-slate-50,
+[data-theme="dark"] .bg-white { background-color: #1e2435 !important; }
+[data-theme="dark"] .hover\:bg-slate-50\/60:hover,
+[data-theme="dark"] .hover\:bg-teal-50\/30:hover { background-color: rgba(255,255,255,0.04) !important; }
+
+/* Borders */
+[data-theme="dark"] .border-slate-100,
+[data-theme="dark"] .border-slate-200 { border-color: rgba(255,255,255,0.08) !important; }
+[data-theme="dark"] .divide-slate-50 > * + * { border-color: rgba(255,255,255,0.05) !important; }
+
+/* Sidebar */
+[data-theme="dark"] aside {
+  background: rgba(13, 17, 28, 0.95) !important;
+  border-right-color: rgba(26,143,143,0.12) !important;
+}
+
+[data-theme="dark"] .nav-item { color: #94a3b8 !important; }
+[data-theme="dark"] .nav-item:hover { background: rgba(255,255,255,0.05) !important; }
+[data-theme="dark"] .nav-item.active { background: rgba(26,143,143,0.15) !important; color: #1a8f8f !important; }
+
+/* Top mobile header */
+[data-theme="dark"] .md\:hidden { background: rgba(13,17,28,0.95) !important; }
+
+/* Cards */
+[data-theme="dark"] .premium-card,
+[data-theme="dark"] .premium-card-static {
+  background: var(--lv-card) !important;
+  border-color: var(--lv-border-soft) !important;
+}
+
+[data-theme="dark"] .premium-card:hover {
+  border-color: rgba(26,143,143,0.2) !important;
+}
+
+/* Inputs & textareas */
+[data-theme="dark"] .input-field {
+  background: #1a1f30 !important;
+  border-color: rgba(255,255,255,0.1) !important;
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .input-field::placeholder { color: #475569 !important; }
+
+[data-theme="dark"] .input-field:focus {
+  background: #1e2435 !important;
+  border-color: #1a8f8f !important;
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  background: #1a1f30 !important;
+  color: #e2e8f0 !important;
+  border-color: rgba(255,255,255,0.1) !important;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder { color: #475569 !important; }
+
+/* User info box in sidebar */
+[data-theme="dark"] .mx-3.mb-4.rounded-xl {
+  background: rgba(26,143,143,0.08) !important;
+  border-color: rgba(26,143,143,0.12) !important;
+}
+
+/* Override inline-style text colours on common elements */
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3 { color: #e2e8f0 !important; }
+
+[data-theme="dark"] p { color: #94a3b8; }
+
+[data-theme="dark"] label { color: #94a3b8 !important; }
+
+[data-theme="dark"] .font-semibold,
+[data-theme="dark"] .font-bold,
+[data-theme="dark"] .font-medium { color: inherit; }
+
+/* Scrollbar */
+[data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(26,143,143,0.35); }
+
+/* Reduce motion — applied when data-reduce-motion="true" on <html> */
+[data-reduce-motion="true"] *,
+[data-reduce-motion="true"] *::before,
+[data-reduce-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}

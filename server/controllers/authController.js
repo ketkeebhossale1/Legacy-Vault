@@ -24,3 +24,25 @@ export async function signin(req, res, next) {
     return res.json({ success: true, message: 'Signed in', data: user })
   } catch (error) { next(error) }
 }
+
+export async function forgotPassword(req, res, next) {
+  try {
+    const { email } = req.body
+    if (!email?.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))
+      return invalid(res, 'A valid email is required')
+    await authService.requestPasswordReset(email)
+    // Always return success to avoid leaking whether the account exists
+    return res.json({ success: true, message: 'If an account exists, a reset link has been sent.', data: null })
+  } catch (error) { next(error) }
+}
+
+export async function resetPassword(req, res, next) {
+  try {
+    const { token, password } = req.body
+    if (!token) return invalid(res, 'Reset token is required')
+    if (!password || password.length < 8) return invalid(res, 'Password must be at least 8 characters')
+    const result = await authService.resetPassword(token, password)
+    if (result.invalid) return res.status(400).json({ success: false, message: 'Reset link is invalid or has expired', data: null })
+    return res.json({ success: true, message: 'Password updated successfully', data: null })
+  } catch (error) { next(error) }
+}

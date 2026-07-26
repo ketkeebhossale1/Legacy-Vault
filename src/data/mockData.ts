@@ -7,6 +7,7 @@ export interface Nominee {
   assetName: string
   assetPercentage: number
   isActive?: boolean
+  isExecutor?: boolean
 }
 
 export const mockNominees: Nominee[] = [

@@ -9,4 +9,16 @@ const api = axios.create({
   timeout: 10000,
 })
 
+// Attach JWT from stored user on every request
+api.interceptors.request.use(config => {
+  try {
+    const raw = localStorage.getItem('lv_user')
+    if (raw) {
+      const { token } = JSON.parse(raw) as { token?: string }
+      if (token) config.headers['Authorization'] = `Bearer ${token}`
+    }
+  } catch { /* ignore */ }
+  return config
+})
+
 export default api
