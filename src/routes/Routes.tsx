@@ -7,12 +7,15 @@ import PublicLayout from '../layouts/PublicLayout'
 import LandingPage from '../pages/LandingPage'
 import AuthPage from '../components/AuthPage'
 import ForgotPassword from '../pages/ForgotPassword'
+import ResetPassword from '../pages/ResetPassword'
 import HomePage from '../components/HomePage'
 import MyLegacy from '../pages/MyLegacy'
 import DigitalWill from '../pages/DigitalWill'
 import AIAdvisor from '../pages/AIAdvisor'
 import ActivityLogs from '../pages/ActivityLogs'
 import Settings from '../pages/Settings'
+import Subscription from '../pages/Subscription'
+import Payment from '../pages/Payment'
 import PrivacyPolicy from '../pages/PrivacyPolicy'
 import Terms from '../pages/Terms'
 import Contact from '../pages/Contact'
@@ -39,6 +42,7 @@ export default function AppRoutes() {
         <Route path="/login" element={<AuthPage mode="signin" />} />
         <Route path="/signup" element={<AuthPage mode="signup" />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
       </Route>
 
       <Route
@@ -54,6 +58,8 @@ export default function AppRoutes() {
         <Route path="/ai-advisor" element={<AIAdvisor />} />
         <Route path="/activity" element={<ActivityLogs />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/subscription" element={<Subscription />} />
+        <Route path="/payment" element={<Payment />} />
 
         {/* Legacy redirects */}
         <Route path="/dashboard" element={<Navigate to="/home" replace />} />

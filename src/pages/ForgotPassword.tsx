@@ -2,17 +2,27 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Mail, ArrowLeft, CheckCircle } from 'lucide-react'
 import Button from '../components/ui/Button'
-import { useToast } from '../context/ToastContext'
+import api from '../services/api'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
-  const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSent(true)
-    toast('Reset link sent (demo)', 'success')
+    setError(null)
+    setLoading(true)
+    try {
+      await api.post('/auth/forgot-password', { email: email.trim() })
+      setSent(true)
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      setError(msg || 'Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -33,7 +43,8 @@ export default function ForgotPassword() {
               Check your email
             </h1>
             <p className="text-sm text-slate-500 mb-6 leading-relaxed">
-              If an account exists for <strong>{email || 'that address'}</strong>, you&apos;ll receive a reset link shortly.
+              If an account exists for <strong>{email}</strong>, you'll receive a reset link shortly.
+              The link expires in <strong>1 hour</strong>.
             </p>
             <Link to="/login">
               <Button className="w-full">Back to Sign In</Button>
@@ -53,7 +64,7 @@ export default function ForgotPassword() {
             <h1 className="text-2xl font-semibold text-slate-800 mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
               Forgot password?
             </h1>
-            <p className="text-sm text-slate-500 mb-6">Enter your email and we&apos;ll send a secure reset link.</p>
+            <p className="text-sm text-slate-500 mb-6">Enter your email and we'll send a secure reset link.</p>
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div>
                 <label className="text-xs font-medium text-slate-600 mb-1.5 block">Email address</label>
@@ -64,10 +75,13 @@ export default function ForgotPassword() {
                   onChange={e => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   className="input-field w-full px-4 py-3 rounded-xl text-sm border"
-                  style={{ borderColor: '#e8ebf0', background: '#fafbfc' }}
+                  style={{ borderColor: error ? '#dc3545' : '#e8ebf0', background: '#fafbfc' }}
                 />
+                {error && <p className="text-xs text-red-500 mt-1.5">{error}</p>}
               </div>
-              <Button type="submit" className="w-full">Send reset link</Button>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Sending…' : 'Send reset link'}
+              </Button>
             </form>
           </>
         )}

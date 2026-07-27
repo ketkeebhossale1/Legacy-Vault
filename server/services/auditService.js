@@ -1,2 +1,2 @@
-import { findAuditLogsByUserId } from '../queries/auditQueries.js'
-export async function listAuditLogs(userId) { return findAuditLogsByUserId(userId) }
+import { findActivityByUserId } from '../queries/auditQueries.js'
+export async function listAuditLogs(userId) { return findActivityByUserId(userId) }
