@@ -18,14 +18,14 @@ const extraOrigins = (process.env.CLIENT_ORIGIN || '')
   .map(o => o.trim())
   .filter(Boolean)
 
+const VERCEL_ORIGIN = /^https:\/\/.*\.vercel\.app$/
 const LOCAL_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/
 
 app.use(cors({
   origin: (origin, callback) => {
     // Allow no-origin requests (Postman, curl, server-to-server via proxy)
     if (!origin) return callback(null, true)
-    if (LOCAL_ORIGIN.test(origin) || extraOrigins.includes(origin)) return callback(null, true)
-    // Deny but don't crash — return null so the browser handles the blocked response
+    if (LOCAL_ORIGIN.test(origin) || VERCEL_ORIGIN.test(origin) || extraOrigins.includes(origin)) return callback(null, true)
     callback(null, false)
   },
   credentials: true,
