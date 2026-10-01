@@ -6,7 +6,7 @@ const api = axios.create({
   // This works inside the Figma preview too, where localhost is not the preview's origin.
   baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: { 'Content-Type': 'application/json' },
-  timeout: 10000,
+  timeout: 60000,
 })
 
 // Attach JWT from stored user on every request

@@ -184,6 +184,11 @@ export default function AuthPage({ mode: modeProp }: AuthPageProps) {
               )}
 
               {error && <p className="text-xs text-red-500 -mt-1">{error}</p>}
+              {loading && (
+                <p className="text-xs text-slate-400 -mt-1 text-center">
+                  Connecting to server… this may take up to 60s on first load.
+                </p>
+              )}
               <Button type="submit" className="w-full mt-1" disabled={loading}>
                 {loading ? 'Please wait…' : tab === 'signin' ? 'Sign In' : 'Create Vault'}
               </Button>
