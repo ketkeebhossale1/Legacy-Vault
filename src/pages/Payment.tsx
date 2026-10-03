@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { CheckCircle2, ArrowLeft, Loader2, ShieldCheck, CreditCard, Smartphone, Building2 } from 'lucide-react'
+import { CheckCircle2, ArrowLeft, Upload, X, ImageIcon } from 'lucide-react'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import { useToast } from '../context/ToastContext'
@@ -9,109 +9,62 @@ import type { AppDispatch, RootState } from '../redux/store'
 import { authSucceeded } from '../redux/reducers/authReducer'
 import api from '../services/api'
 
-declare global {
-  interface Window {
-    Razorpay: new (options: RazorpayOptions) => RazorpayInstance
-  }
-}
-interface RazorpayOptions {
-  key: string; amount: number; currency: string; name: string
-  description: string; order_id: string
-  prefill?: { name?: string; email?: string }
-  theme?: { color?: string }
-  handler: (response: RazorpayResponse) => void
-  modal?: { ondismiss?: () => void }
-}
-interface RazorpayInstance { open(): void }
-interface RazorpayResponse {
-  razorpay_payment_id: string
-  razorpay_order_id: string
-  razorpay_signature: string
-}
-
-const PLAN_LABELS: Record<string, { label: string; price: string; period: string }> = {
-  premium_monthly: { label: 'Premium Monthly', price: '₹299',   period: 'month' },
-  premium_yearly:  { label: 'Premium Annual',  price: '₹2,499', period: 'year'  },
-}
-
-function loadRazorpayScript(): Promise<boolean> {
-  return new Promise(resolve => {
-    if (window.Razorpay) return resolve(true)
-    const script = document.createElement('script')
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-    script.onload  = () => resolve(true)
-    script.onerror = () => resolve(false)
-    document.body.appendChild(script)
-  })
+const PLAN_LABELS: Record<string, { label: string; price: string; amount: string; period: string }> = {
+  premium_monthly: { label: 'Premium Monthly', price: '₹299',   amount: '299',  period: 'month' },
+  premium_yearly:  { label: 'Premium Annual',  price: '₹2,499', amount: '2499', period: 'year'  },
 }
 
 export default function Payment() {
-  const [params]   = useSearchParams()
-  const plan       = params.get('plan') || 'premium_monthly'
-  const planInfo   = PLAN_LABELS[plan] || PLAN_LABELS.premium_monthly
+  const [params]  = useSearchParams()
+  const plan      = params.get('plan') || 'premium_monthly'
+  const planInfo  = PLAN_LABELS[plan] || PLAN_LABELS.premium_monthly
 
-  const navigate   = useNavigate()
-  const { toast }  = useToast()
-  const dispatch   = useDispatch<AppDispatch>()
-  const user       = useSelector((state: RootState) => state.auth.user)
+  const navigate  = useNavigate()
+  const { toast } = useToast()
+  const dispatch  = useDispatch<AppDispatch>()
+  const user      = useSelector((state: RootState) => state.auth.user)
 
-  const [loading, setLoading] = useState(false)
-  const [done,    setDone]    = useState(false)
+  const [screenshot, setScreenshot] = useState<File | null>(null)
+  const [preview,    setPreview]    = useState<string | null>(null)
+  const [loading,    setLoading]    = useState(false)
+  const [done,       setDone]       = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
 
-  const handlePay = async () => {
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
+    `upi://pay?pa=legacyvault@upi&pn=Legacy+Vault&am=${planInfo.amount}&cu=INR`
+  )}`
+
+  const handleFile = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast('Please upload an image file', 'error')
+      return
+    }
+    setScreenshot(file)
+    setPreview(URL.createObjectURL(file))
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    const file = e.dataTransfer.files[0]
+    if (file) handleFile(file)
+  }
+
+  const handleSubmit = async () => {
+    if (!screenshot) {
+      toast('Please upload your payment screenshot first', 'error')
+      return
+    }
     setLoading(true)
     try {
-      const loaded = await loadRazorpayScript()
-      if (!loaded) {
-        toast('Failed to load payment gateway. Check your internet connection.', 'error')
-        setLoading(false)
-        return
-      }
-
-      const { data } = await api.post('/subscription/create-order', { plan })
-      const orderData = data.data
-
-      const options: RazorpayOptions = {
-        key:         orderData.keyId,
-        amount:      orderData.amount,
-        currency:    orderData.currency,
-        name:        'Legacy Vault',
-        description: `${planInfo.label} Plan`,
-        order_id:    orderData.orderId,
-        prefill:     { name: user?.name || '', email: user?.email || '' },
-        theme:       { color: '#7c3aed' },
-        handler: async (response: RazorpayResponse) => {
-          try {
-            await api.post('/subscription/verify-payment', {
-              plan,
-              razorpay_order_id:   response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature:  response.razorpay_signature,
-            })
-            if (user) dispatch(authSucceeded({ ...user, plan: 'premium' }))
-            setDone(true)
-            toast('Plan upgraded to Premium!', 'success')
-            setTimeout(() => navigate('/home'), 2500)
-          } catch (err: unknown) {
-            const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-            toast(msg || 'Payment verification failed. Contact support.', 'error')
-          } finally {
-            setLoading(false)
-          }
-        },
-        modal: {
-          ondismiss: () => {
-            setLoading(false)
-            toast('Payment cancelled.', 'error')
-          },
-        },
-      }
-
-      const rzp = new window.Razorpay(options)
-      rzp.open()
+      const { data } = await api.post('/subscription/manual-upgrade', { plan })
+      if (user) dispatch(authSucceeded({ ...user, plan: 'premium' }))
+      setDone(true)
+      toast('Payment verified! Premium activated.', 'success')
+      setTimeout(() => navigate('/home'), 2500)
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast(msg || 'Unable to initiate payment. Please try again.', 'error')
+      toast(msg || 'Something went wrong. Please try again.', 'error')
+    } finally {
       setLoading(false)
     }
   }
@@ -124,9 +77,9 @@ export default function Payment() {
           <CheckCircle2 size={32} />
         </div>
         <h2 className="text-2xl font-bold text-slate-800 mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
-          Payment Successful!
+          Payment Verified!
         </h2>
-        <p className="text-slate-500 text-sm">Your Premium plan is now active. Redirecting to home…</p>
+        <p className="text-slate-500 text-sm">Your Premium plan is now active. Redirecting…</p>
       </div>
     )
   }
@@ -142,72 +95,87 @@ export default function Payment() {
         <h1 className="text-3xl font-bold text-slate-800" style={{ fontFamily: "'Playfair Display', serif" }}>
           Complete Payment
         </h1>
-        <p className="text-slate-500 text-sm mt-1">
-          Secure payment powered by Razorpay — UPI, cards, netbanking & wallets.
-        </p>
+        <p className="text-slate-500 text-sm mt-1">Scan the QR code and upload your payment screenshot.</p>
       </div>
 
       <Card hover={false} className="space-y-6">
         {/* Plan summary */}
         <div className="px-4 py-3 rounded-xl"
-          style={{ background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.15)' }}>
+          style={{ background: 'rgba(26,143,143,0.06)', border: '1px solid rgba(26,143,143,0.15)' }}>
           <div className="flex justify-between items-center">
             <div>
               <p className="text-sm font-semibold text-slate-800">Legacy Vault {planInfo.label}</p>
-              <p className="text-xs text-slate-500 mt-0.5">Upgrade to Premium Plan</p>
+              <p className="text-xs text-slate-500 mt-0.5">One-time UPI payment</p>
             </div>
             <div className="text-right">
-              <span className="text-2xl font-bold" style={{ color: '#7c3aed' }}>{planInfo.price}</span>
+              <span className="text-2xl font-bold" style={{ color: '#1a8f8f' }}>{planInfo.price}</span>
               <p className="text-xs text-slate-400">per {planInfo.period}</p>
             </div>
           </div>
         </div>
 
-        {/* Payment methods */}
-        <div>
-          <p className="text-xs font-semibold text-slate-600 mb-3">Accepted payment methods</p>
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { icon: Smartphone, label: 'UPI',       sub: 'GPay · PhonePe · Paytm' },
-              { icon: CreditCard, label: 'Cards',      sub: 'Visa · Mastercard · RuPay' },
-              { icon: Building2,  label: 'Netbanking', sub: 'All major banks' },
-            ].map(m => {
-              const Icon = m.icon
-              return (
-                <div key={m.label} className="flex flex-col items-center gap-1.5 p-3 rounded-xl text-center"
-                  style={{ background: 'rgba(26,143,143,0.04)', border: '1px solid rgba(26,143,143,0.1)' }}>
-                  <Icon size={18} style={{ color: '#1a8f8f' }} />
-                  <p className="text-xs font-semibold text-slate-700">{m.label}</p>
-                  <p className="text-[10px] text-slate-400 leading-tight">{m.sub}</p>
-                </div>
-              )
-            })}
+        {/* QR Code */}
+        <div className="flex flex-col items-center gap-3">
+          <p className="text-sm font-semibold text-slate-700">Scan to pay via UPI</p>
+          <div className="p-3 rounded-2xl border-2" style={{ borderColor: 'rgba(26,143,143,0.3)' }}>
+            <img src={qrUrl} alt="UPI QR Code" width={220} height={220} className="rounded-xl" />
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-slate-500">Pay to: <span className="font-semibold text-slate-700">legacyvault@upi</span></p>
+            <p className="text-xs text-slate-400 mt-0.5">Works with GPay, PhonePe, Paytm & all UPI apps</p>
           </div>
         </div>
 
-        {/* Security badge */}
-        <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
-          style={{ background: 'rgba(22,163,74,0.05)', border: '1px solid rgba(22,163,74,0.12)' }}>
-          <ShieldCheck size={15} style={{ color: '#16a34a' }} className="shrink-0" />
-          <p className="text-xs text-slate-600">
-            256-bit SSL encrypted · PCI DSS compliant · Powered by Razorpay
-          </p>
+        {/* Screenshot Upload */}
+        <div>
+          <p className="text-sm font-semibold text-slate-700 mb-2">Upload payment screenshot</p>
+          {!preview ? (
+            <div
+              onClick={() => fileRef.current?.click()}
+              onDrop={handleDrop}
+              onDragOver={e => e.preventDefault()}
+              className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors"
+              style={{ borderColor: 'rgba(26,143,143,0.3)' }}
+            >
+              <Upload size={24} className="mx-auto mb-2" style={{ color: '#1a8f8f' }} />
+              <p className="text-sm text-slate-600 font-medium">Click or drag & drop screenshot here</p>
+              <p className="text-xs text-slate-400 mt-1">PNG, JPG, JPEG supported</p>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+              />
+            </div>
+          ) : (
+            <div className="relative rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(26,143,143,0.2)' }}>
+              <img src={preview} alt="Payment screenshot" className="w-full max-h-48 object-cover" />
+              <button
+                onClick={() => { setScreenshot(null); setPreview(null) }}
+                className="absolute top-2 right-2 p-1 rounded-full bg-white shadow"
+              >
+                <X size={14} className="text-slate-600" />
+              </button>
+              <div className="px-3 py-2 flex items-center gap-2" style={{ background: 'rgba(26,143,143,0.05)' }}>
+                <ImageIcon size={13} style={{ color: '#1a8f8f' }} />
+                <p className="text-xs text-slate-600 truncate">{screenshot?.name}</p>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Pay button */}
+        {/* Submit */}
         <Button
           className="w-full justify-center"
-          style={{ background: 'linear-gradient(135deg,#7c3aed,#9f67fa)' }}
-          onClick={handlePay}
-          disabled={loading}
+          onClick={handleSubmit}
+          disabled={loading || !screenshot}
         >
-          {loading
-            ? <><Loader2 size={15} className="animate-spin" /> Opening payment…</>
-            : <>Pay {planInfo.price} securely</>}
+          {loading ? 'Verifying payment…' : 'Confirm Payment & Activate Premium'}
         </Button>
 
         <p className="text-xs text-slate-400 text-center">
-          Your plan activates instantly after successful payment.
+          Your screenshot will be reviewed. Premium activates immediately upon submission.
         </p>
       </Card>
     </div>

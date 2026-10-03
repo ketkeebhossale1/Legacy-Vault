@@ -88,6 +88,23 @@ export async function verifyPaymentHandler(req, res, next) {
   } catch (error) { next(error) }
 }
 
+// POST /api/subscription/manual-upgrade  (screenshot-based payment)
+export async function manualUpgradeHandler(req, res, next) {
+  try {
+    const { plan } = req.body
+    const validPlans = ['premium_monthly', 'premium_yearly']
+    if (!validPlans.includes(plan)) {
+      return res.status(400).json({ success: false, message: 'Invalid plan', data: null })
+    }
+    const days = plan === 'premium_yearly' ? 365 : 30
+    const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+    const user = await upgradePlan(req.user.id, 'premium', expiresAt)
+    if (!user) return res.status(404).json({ success: false, message: 'User not found', data: null })
+    console.log(`[Legacy Vault] Manual upgrade: user=${req.user.id} plan=${plan}`)
+    return res.json({ success: true, message: 'Upgraded to Premium', data: user })
+  } catch (error) { next(error) }
+}
+
 // GET /api/subscription
 export async function getPlanHandler(req, res, next) {
   try {
