@@ -1,8 +1,7 @@
 import PDFDocument from 'pdfkit'
 
-function isResendConfigured() {
-  const key = process.env.RESEND_API_KEY
-  return key && key.startsWith('re_')
+function isBrevoConfigured() {
+  return !!process.env.BREVO_API_KEY
 }
 
 function generateWillPdf(willText) {
@@ -30,12 +29,21 @@ function generateWillPdf(willText) {
   })
 }
 
-async function sendViaResend({ to, subject, html, attachments = [] }) {
-  const payload = { from: 'Legacy Vault <onboarding@resend.dev>', to, subject, html, attachments }
-  const res = await fetch('https://api.resend.com/emails', {
+async function sendViaBrevo({ to, subject, html, attachments = [] }) {
+  const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER || 'noreply@legacyvault.app'
+  const payload = {
+    sender: { name: 'Legacy Vault', email: senderEmail },
+    to: [{ email: to }],
+    subject,
+    htmlContent: html,
+    ...(attachments.length > 0 && {
+      attachment: attachments.map(a => ({ name: a.filename, content: a.content }))
+    }),
+  }
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+      'api-key': process.env.BREVO_API_KEY,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
@@ -48,27 +56,23 @@ async function sendViaResend({ to, subject, html, attachments = [] }) {
 export async function sendWillToAdvocate(advocateEmail, willText, ownerEmail) {
   console.log(`[Legacy Vault] Sending digital will to advocate: ${advocateEmail}`)
 
-  if (!isResendConfigured()) {
-    console.log('[Legacy Vault] RESEND_API_KEY not configured — skipping email send')
+  if (!isBrevoConfigured()) {
+    console.log('[Legacy Vault] BREVO_API_KEY not configured — skipping email send')
     return
   }
-
-  // Resend free plan only allows sending to the account owner's email.
-  // We send to the owner and clearly note the intended advocate recipient.
-  const recipient = ownerEmail || advocateEmail
 
   try {
     const pdfBuffer = await generateWillPdf(willText)
     const pdfBase64 = pdfBuffer.toString('base64')
 
-    await sendViaResend({
-      to: recipient,
-      subject: `Digital Will shared with ${advocateEmail} — Legacy Vault`,
+    await sendViaBrevo({
+      to: advocateEmail,
+      subject: 'Digital Will Document — Legacy Vault',
       html: `
         <div style="font-family: Georgia, serif; max-width: 560px; margin: 0 auto; color: #334155;">
           <h2 style="color: #1a8f8f; font-size: 20px; margin-bottom: 8px;">Legacy Vault</h2>
           <p style="font-size: 14px; line-height: 1.6;">
-            Your digital will has been shared with <strong>${advocateEmail}</strong> via Legacy Vault.
+            Your client has shared their digital will with you via Legacy Vault.
             Please find the will attached as a PDF document.
           </p>
           <p style="font-size: 12px; color: #94a3b8; margin-top: 24px;">
@@ -80,7 +84,7 @@ export async function sendWillToAdvocate(advocateEmail, willText, ownerEmail) {
         { filename: 'LegacyVault_DigitalWill.pdf', content: pdfBase64 },
       ],
     })
-    console.log(`[Legacy Vault] Will email sent successfully via Resend to ${recipient}`)
+    console.log(`[Legacy Vault] Will email sent successfully via Brevo to ${advocateEmail}`)
   } catch (err) {
     console.error('[Legacy Vault] Failed to send will to advocate:', err.message)
   }
@@ -89,10 +93,10 @@ export async function sendWillToAdvocate(advocateEmail, willText, ownerEmail) {
 export async function sendPasswordResetEmail(toEmail, resetUrl) {
   console.log(`[Legacy Vault] Password reset link for ${toEmail}:\n${resetUrl}`)
 
-  if (!isResendConfigured()) return
+  if (!isBrevoConfigured()) return
 
   try {
-    await sendViaResend({
+    await sendViaBrevo({
       to: toEmail,
       subject: 'Reset your Legacy Vault password',
       html: `
