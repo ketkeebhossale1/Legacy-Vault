@@ -17,8 +17,8 @@ export async function shareWillHandler(req, res, next) {
 
     const advocate = await upsertAdvocate(req.user.id, email.trim())
 
-    // Send email in background — don't block the response on SMTP
-    sendWillToAdvocate(email.trim(), will.text).catch(err =>
+    // Send email in background — don't block the response
+    sendWillToAdvocate(email.trim(), will.text, req.user.email).catch(err =>
       console.error('[Legacy Vault] Background email send failed:', err.message)
     )
 

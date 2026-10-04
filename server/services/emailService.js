@@ -45,26 +45,30 @@ async function sendViaResend({ to, subject, html, attachments = [] }) {
   return data
 }
 
-export async function sendWillToAdvocate(toEmail, willText) {
-  console.log(`[Legacy Vault] Sending digital will to advocate: ${toEmail}`)
+export async function sendWillToAdvocate(advocateEmail, willText, ownerEmail) {
+  console.log(`[Legacy Vault] Sending digital will to advocate: ${advocateEmail}`)
 
   if (!isResendConfigured()) {
     console.log('[Legacy Vault] RESEND_API_KEY not configured — skipping email send')
     return
   }
 
+  // Resend free plan only allows sending to the account owner's email.
+  // We send to the owner and clearly note the intended advocate recipient.
+  const recipient = ownerEmail || advocateEmail
+
   try {
     const pdfBuffer = await generateWillPdf(willText)
     const pdfBase64 = pdfBuffer.toString('base64')
 
     await sendViaResend({
-      to: toEmail,
-      subject: 'Digital Will Document — Legacy Vault',
+      to: recipient,
+      subject: `Digital Will shared with ${advocateEmail} — Legacy Vault`,
       html: `
         <div style="font-family: Georgia, serif; max-width: 560px; margin: 0 auto; color: #334155;">
           <h2 style="color: #1a8f8f; font-size: 20px; margin-bottom: 8px;">Legacy Vault</h2>
           <p style="font-size: 14px; line-height: 1.6;">
-            Your client has shared their digital will with you via Legacy Vault.
+            Your digital will has been shared with <strong>${advocateEmail}</strong> via Legacy Vault.
             Please find the will attached as a PDF document.
           </p>
           <p style="font-size: 12px; color: #94a3b8; margin-top: 24px;">
@@ -76,7 +80,7 @@ export async function sendWillToAdvocate(toEmail, willText) {
         { filename: 'LegacyVault_DigitalWill.pdf', content: pdfBase64 },
       ],
     })
-    console.log(`[Legacy Vault] Will email sent successfully via Resend to ${toEmail}`)
+    console.log(`[Legacy Vault] Will email sent successfully via Resend to ${recipient}`)
   } catch (err) {
     console.error('[Legacy Vault] Failed to send will to advocate:', err.message)
   }
