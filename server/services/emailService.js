@@ -1,12 +1,8 @@
-import nodemailer from 'nodemailer'
 import PDFDocument from 'pdfkit'
 
-const PLACEHOLDER = /^your-/i
-
-function isSmtpConfigured() {
-  const user = process.env.SMTP_USER
-  const pass = process.env.SMTP_PASS
-  return user && pass && !PLACEHOLDER.test(user) && !PLACEHOLDER.test(pass)
+function isResendConfigured() {
+  const key = process.env.RESEND_API_KEY
+  return key && key.startsWith('re_')
 }
 
 function generateWillPdf(willText) {
@@ -17,54 +13,51 @@ function generateWillPdf(willText) {
     doc.on('end', () => resolve(Buffer.concat(chunks)))
     doc.on('error', reject)
 
-    // Header
     doc.fontSize(18).font('Helvetica-Bold').fillColor('#1a8f8f').text('Legacy Vault', { align: 'center' })
     doc.moveDown(0.3)
     doc.fontSize(13).font('Helvetica').fillColor('#334155').text('Digital Will Document', { align: 'center' })
     doc.moveDown(0.3)
     doc.fontSize(9).fillColor('#94a3b8').text(`Generated on ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}`, { align: 'center' })
     doc.moveDown(1)
-
-    // Divider
     doc.moveTo(60, doc.y).lineTo(535, doc.y).strokeColor('#1a8f8f').lineWidth(0.5).stroke()
     doc.moveDown(1)
-
-    // Will body
     doc.fontSize(10).font('Courier').fillColor('#1f2933').text(willText, { lineGap: 4, paragraphGap: 6 })
-
-    // Footer
     doc.moveDown(2)
     doc.moveTo(60, doc.y).lineTo(535, doc.y).strokeColor('#e2e8f0').lineWidth(0.5).stroke()
     doc.moveDown(0.5)
     doc.fontSize(8).font('Helvetica').fillColor('#94a3b8').text('This document was generated through Legacy Vault — a digital estate planning platform.', { align: 'center' })
-
     doc.end()
   })
 }
 
-export async function sendWillToAdvocate(toEmail, willText) {
-  console.log(`\n[Legacy Vault] Sending digital will to advocate: ${toEmail}`)
-  console.log(`[Legacy Vault] SMTP configured: ${isSmtpConfigured()}`)
-  console.log(`[Legacy Vault] SMTP_USER: ${process.env.SMTP_USER}`)
-  console.log(`[Legacy Vault] SMTP_HOST: ${process.env.SMTP_HOST}\n`)
+async function sendViaResend({ to, subject, html, attachments = [] }) {
+  const payload = { from: 'Legacy Vault <onboarding@resend.dev>', to, subject, html, attachments }
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(JSON.stringify(data))
+  return data
+}
 
-  if (!isSmtpConfigured()) {
-    console.log('[Legacy Vault] SMTP not configured — skipping email send')
+export async function sendWillToAdvocate(toEmail, willText) {
+  console.log(`[Legacy Vault] Sending digital will to advocate: ${toEmail}`)
+
+  if (!isResendConfigured()) {
+    console.log('[Legacy Vault] RESEND_API_KEY not configured — skipping email send')
     return
   }
 
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: false,
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-  })
-
   try {
     const pdfBuffer = await generateWillPdf(willText)
+    const pdfBase64 = pdfBuffer.toString('base64')
 
-    const info = await transporter.sendMail({
-      from: process.env.EMAIL_FROM || '"Legacy Vault" <no-reply@legacyvault.app>',
+    await sendViaResend({
       to: toEmail,
       subject: 'Digital Will Document — Legacy Vault',
       html: `
@@ -80,36 +73,22 @@ export async function sendWillToAdvocate(toEmail, willText) {
         </div>
       `,
       attachments: [
-        {
-          filename: 'LegacyVault_DigitalWill.pdf',
-          content: pdfBuffer,
-          contentType: 'application/pdf',
-        },
+        { filename: 'LegacyVault_DigitalWill.pdf', content: pdfBase64 },
       ],
     })
-    console.log(`[Legacy Vault] Will email sent successfully. MessageId: ${info.messageId}`)
+    console.log(`[Legacy Vault] Will email sent successfully via Resend to ${toEmail}`)
   } catch (err) {
     console.error('[Legacy Vault] Failed to send will to advocate:', err.message)
-    console.error('[Legacy Vault] Full SMTP error:', err)
   }
 }
 
 export async function sendPasswordResetEmail(toEmail, resetUrl) {
-  // Always log the link — useful in development and as a fallback
-  console.log(`\n[Legacy Vault] Password reset link for ${toEmail}:\n${resetUrl}\n`)
+  console.log(`[Legacy Vault] Password reset link for ${toEmail}:\n${resetUrl}`)
 
-  if (!isSmtpConfigured()) return // No real SMTP configured — link is in the console above
-
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: false,
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-  })
+  if (!isResendConfigured()) return
 
   try {
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM || '"Legacy Vault" <no-reply@legacyvault.app>',
+    await sendViaResend({
       to: toEmail,
       subject: 'Reset your Legacy Vault password',
       html: `
@@ -125,14 +104,12 @@ export async function sendPasswordResetEmail(toEmail, resetUrl) {
             Reset Password
           </a>
           <p style="font-size: 12px; color: #94a3b8;">
-            If you didn't request this, you can safely ignore this email.<br/>
-            This link will expire in 1 hour.
+            If you didn't request this, you can safely ignore this email.
           </p>
         </div>
       `,
     })
   } catch (err) {
-    // Log the SMTP error but never let it crash the request
     console.error('[Legacy Vault] Failed to send reset email:', err.message)
   }
 }
