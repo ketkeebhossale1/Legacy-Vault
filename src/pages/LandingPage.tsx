@@ -20,9 +20,12 @@ export default function LandingPage() {
             >
               <Lock size={18} color="white" />
             </div>
-            <span className="text-xl font-bold text-slate-800" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Legacy Vault
-            </span>
+            <div>
+              <span className="text-xl font-bold text-slate-800" style={{ fontFamily: "'Playfair Display', serif" }}>
+                Legacy Vault
+              </span>
+              <p className="text-xs text-slate-500 leading-tight">Your trusted will generator</p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             {isAuthenticated ? (
@@ -66,20 +69,6 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className="mt-16 grid grid-cols-3 gap-4 max-w-lg">
-          {[
-            { value: '256-bit', label: 'AES encryption' },
-            { value: '72h', label: 'Cooling window' },
-            { value: '2-of-3', label: 'Key threshold' },
-          ].map(s => (
-            <div key={s.value} className="premium-card text-center py-5 px-2">
-              <p className="text-xl font-bold mb-1" style={{ color: '#1a8f8f', fontFamily: "'Playfair Display', serif" }}>
-                {s.value}
-              </p>
-              <p className="text-xs text-slate-400">{s.label}</p>
-            </div>
-          ))}
-        </div>
 
         <footer className="mt-24 flex flex-wrap gap-5 text-xs text-slate-400">
           <Link to="/privacy-policy" className="hover:text-teal-600 transition-colors">Privacy Policy</Link>
